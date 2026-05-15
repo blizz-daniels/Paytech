@@ -15,6 +15,7 @@ verify_csrf();
 
 $transactions = db_all(
     "SELECT t.receipt_code,
+            t.paystack_reference,
             CONCAT(s.name, ' ', s.surname) AS student_name,
             s.matricnumber,
             s.department,
@@ -22,6 +23,8 @@ $transactions = db_all(
             p.title AS payment_title,
             t.amount,
             t.method,
+            t.channel,
+            t.payer_email,
             t.paid_at
      FROM transactions t
      INNER JOIN payments p ON p.id = t.payment_id
@@ -33,11 +36,12 @@ header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="departmentpay-transactions.csv"');
 
 $output = fopen('php://output', 'w');
-fputcsv($output, ['receipt', 'student', 'matricnumber', 'department', 'level', 'payment', 'amount', 'method', 'date']);
+fputcsv($output, ['receipt', 'paystack_reference', 'student', 'matricnumber', 'department', 'level', 'payment', 'amount', 'method', 'channel', 'payer_email', 'date']);
 
 foreach ($transactions as $transaction) {
     fputcsv($output, [
         $transaction['receipt_code'],
+        $transaction['paystack_reference'],
         $transaction['student_name'],
         $transaction['matricnumber'],
         $transaction['department'],
@@ -45,6 +49,8 @@ foreach ($transactions as $transaction) {
         $transaction['payment_title'],
         $transaction['amount'],
         $transaction['method'],
+        $transaction['channel'],
+        $transaction['payer_email'],
         $transaction['paid_at'],
     ]);
 }

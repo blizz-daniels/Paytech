@@ -6,6 +6,7 @@ USE departmentpay;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS payment_attempts;
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS admins;
 DROP TABLE IF EXISTS lecturers;
@@ -71,6 +72,13 @@ CREATE TABLE transactions (
   student_id INT UNSIGNED NOT NULL,
   amount DECIMAL(12, 2) NOT NULL,
   method VARCHAR(40) NOT NULL,
+  payer_email VARCHAR(180) DEFAULT NULL,
+  paystack_reference VARCHAR(80) DEFAULT NULL,
+  paystack_transaction_id BIGINT UNSIGNED DEFAULT NULL,
+  channel VARCHAR(40) DEFAULT NULL,
+  currency VARCHAR(10) NOT NULL DEFAULT 'NGN',
+  gateway_response VARCHAR(160) DEFAULT NULL,
+  raw_response LONGTEXT DEFAULT NULL,
   paid_at DATETIME NOT NULL,
   CONSTRAINT fk_transactions_payment
     FOREIGN KEY (payment_id) REFERENCES payments(id)
@@ -79,7 +87,33 @@ CREATE TABLE transactions (
     FOREIGN KEY (student_id) REFERENCES students(id)
     ON DELETE CASCADE,
   UNIQUE KEY uniq_student_payment (payment_id, student_id),
+  UNIQUE KEY uniq_paystack_reference (paystack_reference),
   INDEX idx_transaction_paid_at (paid_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE payment_attempts (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  reference VARCHAR(80) NOT NULL UNIQUE,
+  payment_id INT UNSIGNED NOT NULL,
+  student_id INT UNSIGNED NOT NULL,
+  amount DECIMAL(12, 2) NOT NULL,
+  payer_email VARCHAR(180) NOT NULL,
+  authorization_url TEXT DEFAULT NULL,
+  access_code VARCHAR(120) DEFAULT NULL,
+  status ENUM('initialized', 'verified', 'failed') NOT NULL DEFAULT 'initialized',
+  gateway_response VARCHAR(160) DEFAULT NULL,
+  raw_response LONGTEXT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  verified_at DATETIME DEFAULT NULL,
+  CONSTRAINT fk_payment_attempts_payment
+    FOREIGN KEY (payment_id) REFERENCES payments(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_payment_attempts_student
+    FOREIGN KEY (student_id) REFERENCES students(id)
+    ON DELETE CASCADE,
+  INDEX idx_payment_attempts_student (student_id),
+  INDEX idx_payment_attempts_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO admins (name, surname, admin_code, department) VALUES
@@ -133,13 +167,16 @@ INSERT INTO payments (payment_code, title, description, amount, department, leve
     'active'
   );
 
-INSERT INTO transactions (receipt_code, payment_id, student_id, amount, method, paid_at) VALUES
+INSERT INTO transactions (receipt_code, payment_id, student_id, amount, method, payer_email, channel, currency, gateway_response, paid_at) VALUES
   (
     'RCP-SEED-001',
     (SELECT id FROM payments WHERE payment_code = 'PAY-TXT-200'),
     (SELECT id FROM students WHERE matricnumber = 'DPT/CSC/24/001'),
     18500,
-    'Card',
+    'Manual seed',
+    'amara.okafor@example.edu.ng',
+    'seed',
+    'NGN',
+    'Seeded receipt',
     '2026-05-15 10:30:00'
   );
-

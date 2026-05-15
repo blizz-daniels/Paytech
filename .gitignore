@@ -1,0 +1,3 @@
+storage/sessions/sess_*
+php-server.*.log
+

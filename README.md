@@ -14,7 +14,10 @@ A PHP and MySQL school payment web app for departmental collections. The first p
 - Lecturers log in with surname and teacher code.
 - Admin logs in with admin ID and admin code.
 - Lecturers create payment items for their department and selected level.
-- Students see matching payment items on their dashboard and can record a payment.
+- Students see matching payment items and pay through Paystack checkout.
+- Paystack payments are verified server-side before receipts are created.
+- Lecturers and admins have analysis sections for collection progress.
+- Admin can bulk import students or lecturers from one CSV file.
 - Receipts are stored in MySQL and can be exported by admin as CSV.
 - Student and lecturer seed data are provided as CSV files.
 
@@ -35,16 +38,37 @@ DB_USER = root
 DB_PASS = ''
 ```
 
+## Paystack Setup
+
+Set these in `config.php` or as environment variables:
+
+```php
+PAYSTACK_SECRET_KEY = sk_test_xxxxx
+PAYSTACK_PUBLIC_KEY = pk_test_xxxxx
+PAYSTACK_CURRENCY = NGN
+APP_URL = http://127.0.0.1:8088
+```
+
+For local testing, `APP_URL` should match the local URL you open in the browser. For a hosted site, use the public HTTPS URL.
+
+If you already imported an older version of the database, run:
+
+```sql
+SOURCE C:/Users/da4li/Documents/Paytech/data/migration_paystack_import_analysis.sql
+```
+
 ## Files
 
 - `index.php` - shared login page
 - `dashboard.php` - admin, lecturer, and student dashboards
 - `create_payment.php` - lecturer payment item handler
-- `pay.php` - student payment/receipt handler
+- `pay.php` - Paystack checkout initialization
+- `paystack_callback.php` - Paystack transaction verification and receipt generation
+- `import_people.php` - admin CSV import handler
 - `export_transactions.php` - admin CSV export
-- `lib/` - session auth, PDO database helpers, formatting helpers
+- `lib/` - session auth, PDO database helpers, formatting helpers, Paystack client
 - `data/students.csv` - student seed records
 - `data/lecturers.csv` - lecturer seed records
 - `data/schema.sql` - MySQL schema and demo seed data
+- `data/migration_paystack_import_analysis.sql` - non-destructive upgrade for existing databases
 - `styles.css` - responsive fintech-style UI using the logo colors
-

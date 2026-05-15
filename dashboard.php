@@ -18,10 +18,13 @@ $sections = [
         'overview' => 'Overview',
         'create' => 'Create item',
         'items' => 'My items',
+        'analysis' => 'Analysis',
     ],
     'admin' => [
         'overview' => 'Overview',
         'records' => 'Records',
+        'analysis' => 'Analysis',
+        'import' => 'CSV import',
         'database' => 'Database',
     ],
 ];
@@ -41,6 +44,9 @@ $transactions = [];
 $students = [];
 $lecturers = [];
 $paidPaymentIds = [];
+$departmentAnalysis = [];
+$methodAnalysis = [];
+$pendingAttempts = 0;
 
 if ($role === 'student') {
     $welcomeTitle = 'Welcome, ' . $user['name'] . ' ' . $user['surname'];
@@ -94,7 +100,9 @@ if ($role === 'lecturer') {
     $payments = db_all(
         "SELECT p.*,
                 (SELECT COUNT(*) FROM transactions t WHERE t.payment_id = p.id) AS paid_count,
-                (SELECT COALESCE(SUM(t.amount), 0) FROM transactions t WHERE t.payment_id = p.id) AS collected
+                (SELECT COALESCE(SUM(t.amount), 0) FROM transactions t WHERE t.payment_id = p.id) AS collected,
+                (SELECT COUNT(*) FROM payment_attempts pa WHERE pa.payment_id = p.id AND pa.status = 'initialized') AS pending_count,
+                (SELECT COUNT(*) FROM students s WHERE s.department = p.department AND (s.level = p.level OR p.level = 'All levels')) AS eligible_count
          FROM payments p
          WHERE p.lecturer_id = ?
          ORDER BY p.created_at DESC",
@@ -108,12 +116,14 @@ if ($role === 'lecturer') {
 
     $collected = array_sum(array_map(static fn (array $item): float => (float) $item['collected'], $payments));
     $paidCount = array_sum(array_map(static fn (array $item): int => (int) $item['paid_count'], $payments));
+    $expected = array_sum(array_map(static fn (array $item): float => (float) $item['amount'] * (int) $item['eligible_count'], $payments));
+    $collectionRate = percent_value($collected, $expected);
 
     $cards = [
         ['label' => 'Created items', 'value' => h((string) count($payments)), 'note' => 'Active departmental payment items'],
         ['label' => 'Collected', 'value' => money($collected), 'note' => $paidCount . ' successful student payment(s)'],
         ['label' => 'Department', 'value' => h($user['department']), 'note' => h($user['teachercode'])],
-        ['label' => 'Assigned students', 'value' => h((string) count($students)), 'note' => 'From CSV student records'],
+        ['label' => 'Collection rate', 'value' => h($collectionRate . '%'), 'note' => 'Against assigned payment value'],
     ];
 }
 
@@ -126,7 +136,9 @@ if ($role === 'admin') {
                 CONCAT(l.name, ' ', l.surname) AS lecturer_name,
                 l.teachercode,
                 (SELECT COUNT(*) FROM transactions t WHERE t.payment_id = p.id) AS paid_count,
-                (SELECT COALESCE(SUM(t.amount), 0) FROM transactions t WHERE t.payment_id = p.id) AS collected
+                (SELECT COALESCE(SUM(t.amount), 0) FROM transactions t WHERE t.payment_id = p.id) AS collected,
+                (SELECT COUNT(*) FROM payment_attempts pa WHERE pa.payment_id = p.id AND pa.status = 'initialized') AS pending_count,
+                (SELECT COUNT(*) FROM students s WHERE s.department = p.department AND (s.level = p.level OR p.level = 'All levels')) AS eligible_count
          FROM payments p
          INNER JOIN lecturers l ON l.id = p.lecturer_id
          ORDER BY p.created_at DESC"
@@ -143,13 +155,33 @@ if ($role === 'admin') {
     $students = db_all('SELECT * FROM students ORDER BY department, level, surname');
     $lecturers = db_all('SELECT * FROM lecturers ORDER BY department, surname');
     $revenue = array_sum(array_map(static fn (array $item): float => (float) $item['amount'], $transactions));
+    $expected = array_sum(array_map(static fn (array $item): float => (float) $item['amount'] * (int) $item['eligible_count'], $payments));
+    $pendingAttempts = (int) db_value("SELECT COUNT(*) FROM payment_attempts WHERE status = 'initialized'");
     $departments = (int) db_value('SELECT COUNT(DISTINCT department) FROM students');
+    $departmentAnalysis = db_all(
+        "SELECT s.department,
+                COUNT(DISTINCT s.id) AS student_count,
+                COUNT(DISTINCT p.id) AS payment_count,
+                COALESCE(SUM(CASE WHEN p.id IS NULL THEN 0 ELSE p.amount END), 0) AS expected,
+                COALESCE(SUM(t.amount), 0) AS collected
+         FROM students s
+         LEFT JOIN payments p ON p.department = s.department AND p.status = 'active' AND (p.level = s.level OR p.level = 'All levels')
+         LEFT JOIN transactions t ON t.payment_id = p.id AND t.student_id = s.id
+         GROUP BY s.department
+         ORDER BY collected DESC, s.department ASC"
+    );
+    $methodAnalysis = db_all(
+        "SELECT method, COALESCE(channel, 'manual') AS channel, COUNT(*) AS receipt_count, COALESCE(SUM(amount), 0) AS collected
+         FROM transactions
+         GROUP BY method, channel
+         ORDER BY collected DESC"
+    );
 
     $cards = [
         ['label' => 'Revenue collected', 'value' => money($revenue), 'note' => count($transactions) . ' successful payment(s)'],
-        ['label' => 'Active items', 'value' => h((string) count($payments)), 'note' => 'Lecturer-created payment items'],
+        ['label' => 'Outstanding value', 'value' => money(max(0, $expected - $revenue)), 'note' => percent_value($revenue, $expected) . '% collected'],
         ['label' => 'Students', 'value' => h((string) count($students)), 'note' => 'SQL + CSV records'],
-        ['label' => 'Departments', 'value' => h((string) $departments), 'note' => 'Currently configured'],
+        ['label' => 'Pending Paystack', 'value' => h((string) $pendingAttempts), 'note' => $departments . ' department(s) configured'],
     ];
 }
 ?>
@@ -225,6 +257,7 @@ if ($role === 'admin') {
                       <thead>
                         <tr>
                           <th>Receipt</th>
+                          <th>Reference</th>
                           <th>Payment</th>
                           <th>Amount</th>
                           <th>Method</th>
@@ -235,9 +268,10 @@ if ($role === 'admin') {
                         <?php foreach ($transactions as $transaction): ?>
                           <tr>
                             <td><?= h($transaction['receipt_code']) ?></td>
+                            <td><?= h($transaction['paystack_reference'] ?: '-') ?></td>
                             <td><?= h($transaction['payment_title']) ?></td>
                             <td><?= money($transaction['amount']) ?></td>
-                            <td><?= h($transaction['method']) ?></td>
+                            <td><?= h($transaction['method'] . ($transaction['channel'] ? ' / ' . $transaction['channel'] : '')) ?></td>
                             <td><?= h(date_label($transaction['paid_at'])) ?></td>
                           </tr>
                         <?php endforeach; ?>
@@ -280,12 +314,8 @@ if ($role === 'admin') {
                           <form class="inline-pay-form" method="post" action="pay.php">
                             <?= csrf_field() ?>
                             <input type="hidden" name="payment_id" value="<?= h((string) $payment['id']) ?>">
-                            <select name="method" aria-label="Payment method">
-                              <option value="Card">Card</option>
-                              <option value="Bank transfer">Bank transfer</option>
-                              <option value="Cash office">Cash office</option>
-                            </select>
-                            <button class="primary-button" type="submit">Pay now</button>
+                            <input name="payer_email" type="email" aria-label="Email for Paystack receipt" placeholder="Email for receipt" required>
+                            <button class="primary-button" type="submit">Pay with Paystack</button>
                           </form>
                         <?php endif; ?>
                       </div>
@@ -379,7 +409,51 @@ if ($role === 'admin') {
               </aside>
             <?php endif; ?>
 
-            <?php if ($role === 'lecturer' && $section !== 'create'): ?>
+            <?php if ($role === 'lecturer' && $section === 'analysis'): ?>
+              <section class="panel-card span-all">
+                <header>
+                  <div>
+                    <p class="eyebrow">Analysis</p>
+                    <h3>Student payment performance</h3>
+                  </div>
+                </header>
+
+                <?php if (!$payments): ?>
+                  <div class="empty-state">No payment items are available for analysis yet.</div>
+                <?php else: ?>
+                  <div class="analysis-grid">
+                    <?php foreach ($payments as $payment): ?>
+                      <?php
+                        $eligible = (int) $payment['eligible_count'];
+                        $paid = (int) $payment['paid_count'];
+                        $unpaid = max(0, $eligible - $paid);
+                        $expectedAmount = (float) $payment['amount'] * $eligible;
+                        $progress = percent_value((float) $payment['collected'], $expectedAmount);
+                      ?>
+                      <article class="analysis-card">
+                        <div>
+                          <span class="eyebrow"><?= h($payment['level']) ?></span>
+                          <h3><?= h($payment['title']) ?></h3>
+                          <p class="muted-text"><?= h($payment['department']) ?> - due <?= h(date_label($payment['due_date'])) ?></p>
+                        </div>
+                        <div class="progress-track" aria-label="<?= h($progress . '% collected') ?>">
+                          <span style="width: <?= h((string) min(100, $progress)) ?>%"></span>
+                        </div>
+                        <div class="metric-row">
+                          <span>Collected <strong><?= money($payment['collected']) ?></strong></span>
+                          <span>Expected <strong><?= money($expectedAmount) ?></strong></span>
+                          <span>Paid <strong><?= h((string) $paid) ?>/<?= h((string) $eligible) ?></strong></span>
+                          <span>Unpaid <strong><?= h((string) $unpaid) ?></strong></span>
+                          <span>Pending checkout <strong><?= h((string) $payment['pending_count']) ?></strong></span>
+                        </div>
+                      </article>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+              </section>
+            <?php endif; ?>
+
+            <?php if ($role === 'lecturer' && $section !== 'create' && $section !== 'analysis'): ?>
               <section class="panel-card">
                 <header>
                   <div>
@@ -447,6 +521,7 @@ if ($role === 'admin') {
                       <thead>
                         <tr>
                           <th>Receipt</th>
+                          <th>Reference</th>
                           <th>Student</th>
                           <th>Matric</th>
                           <th>Payment</th>
@@ -459,11 +534,12 @@ if ($role === 'admin') {
                         <?php foreach ($transactions as $transaction): ?>
                           <tr>
                             <td><?= h($transaction['receipt_code']) ?></td>
+                            <td><?= h($transaction['paystack_reference'] ?: '-') ?></td>
                             <td><?= h($transaction['name'] . ' ' . $transaction['surname']) ?></td>
                             <td><?= h($transaction['matricnumber']) ?></td>
                             <td><?= h($transaction['payment_title']) ?></td>
                             <td><?= money($transaction['amount']) ?></td>
-                            <td><?= h($transaction['method']) ?></td>
+                            <td><?= h($transaction['method'] . ($transaction['channel'] ? ' / ' . $transaction['channel'] : '')) ?></td>
                             <td><?= h(date_label($transaction['paid_at'])) ?></td>
                           </tr>
                         <?php endforeach; ?>
@@ -472,6 +548,107 @@ if ($role === 'admin') {
                   </div>
                 <?php endif; ?>
               </section>
+            <?php endif; ?>
+
+            <?php if ($role === 'admin' && $section === 'analysis'): ?>
+              <section class="panel-card">
+                <header>
+                  <div>
+                    <p class="eyebrow">Analysis</p>
+                    <h3>Department collection performance</h3>
+                  </div>
+                </header>
+
+                <div class="stack">
+                  <?php foreach ($departmentAnalysis as $department): ?>
+                    <?php
+                      $expectedAmount = (float) $department['expected'];
+                      $collectedAmount = (float) $department['collected'];
+                      $progress = percent_value($collectedAmount, $expectedAmount);
+                    ?>
+                    <article class="analysis-card compact">
+                      <div class="analysis-head">
+                        <div>
+                          <h3><?= h($department['department']) ?></h3>
+                          <p class="muted-text"><?= h((string) $department['student_count']) ?> students - <?= h((string) $department['payment_count']) ?> payment item(s)</p>
+                        </div>
+                        <strong><?= h($progress . '%') ?></strong>
+                      </div>
+                      <div class="progress-track" aria-label="<?= h($progress . '% collected') ?>">
+                        <span style="width: <?= h((string) min(100, $progress)) ?>%"></span>
+                      </div>
+                      <div class="metric-row">
+                        <span>Collected <strong><?= money($collectedAmount) ?></strong></span>
+                        <span>Expected <strong><?= money($expectedAmount) ?></strong></span>
+                        <span>Outstanding <strong><?= money(max(0, $expectedAmount - $collectedAmount)) ?></strong></span>
+                      </div>
+                    </article>
+                  <?php endforeach; ?>
+                </div>
+              </section>
+
+              <aside class="panel-card">
+                <header>
+                  <div>
+                    <p class="eyebrow">Channels</p>
+                    <h3>Payment methods</h3>
+                  </div>
+                </header>
+                <div class="stack">
+                  <?php if (!$methodAnalysis): ?>
+                    <div class="empty-state">No payment channel data yet.</div>
+                  <?php endif; ?>
+                  <?php foreach ($methodAnalysis as $method): ?>
+                    <?= profile_row($method['method'] . ' / ' . $method['channel'], $method['receipt_count'] . ' receipt(s) - NGN ' . number_format((float) $method['collected'], 0)) ?>
+                  <?php endforeach; ?>
+                  <?= profile_row('Pending Paystack checkout', (string) $pendingAttempts) ?>
+                </div>
+              </aside>
+            <?php endif; ?>
+
+            <?php if ($role === 'admin' && $section === 'import'): ?>
+              <section class="panel-card">
+                <header>
+                  <div>
+                    <p class="eyebrow">CSV import</p>
+                    <h3>Bulk add students or lecturers</h3>
+                  </div>
+                </header>
+
+                <form class="form-grid" method="post" action="import_people.php" enctype="multipart/form-data">
+                  <?= csrf_field() ?>
+                  <div class="field-group">
+                    <label for="importType">Record type</label>
+                    <select id="importType" name="import_type" required>
+                      <option value="students">Students</option>
+                      <option value="lecturers">Lecturers</option>
+                    </select>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="csvFile">CSV file</label>
+                    <input id="csvFile" name="csv_file" type="file" accept=".csv,text/csv" required>
+                  </div>
+
+                  <div class="wide action-row">
+                    <button class="primary-button" type="submit">Import CSV</button>
+                  </div>
+                </form>
+              </section>
+
+              <aside class="panel-card">
+                <header>
+                  <div>
+                    <p class="eyebrow">Format</p>
+                    <h3>Required headers</h3>
+                  </div>
+                </header>
+                <div class="stack">
+                  <?= profile_row('Students', 'name,surname,matricnumber,department,level') ?>
+                  <?= profile_row('Lecturers', 'name,surname,teachercode,department') ?>
+                  <div class="empty-state">Existing matric numbers and teacher codes are updated instead of duplicated.</div>
+                </div>
+              </aside>
             <?php endif; ?>
 
             <?php if ($role === 'admin' && $section === 'database'): ?>
@@ -485,7 +662,8 @@ if ($role === 'admin') {
                 <div class="stack">
                   <?= profile_row('Student CSV', 'data/students.csv - name, surname, matricnumber, department, level') ?>
                   <?= profile_row('Lecturer CSV', 'data/lecturers.csv - name, surname, teachercode, department') ?>
-                  <?= profile_row('SQL schema', 'data/schema.sql - admins, students, lecturers, payments, transactions') ?>
+                  <?= profile_row('SQL schema', 'data/schema.sql - admins, students, lecturers, payments, payment_attempts, transactions') ?>
+                  <?= profile_row('Paystack callback', current_app_url() . '/paystack_callback.php') ?>
                   <?= profile_row('Database engine', 'MySQL with PDO prepared statements') ?>
                 </div>
               </section>
