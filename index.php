@@ -53,6 +53,9 @@ try {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= h(APP_NAME) ?></title>
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/lion-logo-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/lion-logo-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/lion-logo-180.png">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -60,10 +63,10 @@ try {
       <main class="login-layout">
         <section class="login-panel" aria-labelledby="loginTitle">
           <div class="brand-row">
-            <img class="school-logo" src="institution_1_logo.png" alt="School logo">
+            <img class="school-logo" src="assets/da4lions-logo.jpeg" alt="Da4lions logo">
             <div>
-              <p class="eyebrow">Departmental Payment Portal</p>
-              <h1 id="loginTitle">Secure payments for every department.</h1>
+              <p class="eyebrow"><?= h(COMPANY_NAME) ?></p>
+              <h1 id="loginTitle">Secure payments with Paytec.</h1>
             </div>
           </div>
 
@@ -98,7 +101,7 @@ try {
         <aside class="status-panel" aria-label="Payment summary">
           <div class="glass-card">
             <p class="panel-label">Current session</p>
-            <strong>Departmental collections</strong>
+            <strong>Paytec collections</strong>
             <div class="metric-grid">
               <div>
                 <span>Settled</span>

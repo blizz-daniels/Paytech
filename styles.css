@@ -1,20 +1,20 @@
 :root {
-  --navy-950: #071726;
-  --navy-900: #0d243d;
-  --navy-800: #12345a;
-  --blue-100: #e8f0f7;
-  --blue-50: #f4f8fb;
-  --gold-600: #b88922;
-  --gold-500: #d1a33a;
-  --teal-600: #157b73;
-  --teal-100: #dff4f1;
-  --ink: #122033;
-  --muted: #6c7a89;
-  --line: #dce5ec;
-  --surface: #ffffff;
-  --soft: #f7fafc;
+  --navy-950: #0b0b0d;
+  --navy-900: #151310;
+  --navy-800: #2a2418;
+  --blue-100: #eadfca;
+  --blue-50: #fff8ea;
+  --gold-600: #ad761d;
+  --gold-500: #efbd45;
+  --teal-600: #2f6f5e;
+  --teal-100: #e6f4ec;
+  --ink: #1d1912;
+  --muted: #736955;
+  --line: #e2d2ad;
+  --surface: #fffdf7;
+  --soft: #fff8ec;
   --danger: #c24135;
-  --shadow: 0 24px 70px rgba(13, 36, 61, 0.15);
+  --shadow: 0 24px 70px rgba(11, 11, 13, 0.18);
   --radius: 8px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -27,7 +27,9 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  background: linear-gradient(135deg, #f8fbfd 0%, #edf3f7 56%, #f9f3e5 100%);
+  background:
+    radial-gradient(circle at top right, rgba(239, 189, 69, 0.22), transparent 30rem),
+    linear-gradient(135deg, #111113 0%, #1d1810 34%, #f6efe0 100%);
 }
 
 button,
@@ -63,8 +65,8 @@ a {
 .login-panel,
 .glass-card,
 .panel-card {
-  border: 1px solid rgba(220, 229, 236, 0.92);
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(226, 210, 173, 0.92);
+  background: rgba(255, 253, 247, 0.96);
   box-shadow: var(--shadow);
   border-radius: var(--radius);
 }
@@ -89,10 +91,14 @@ a {
 }
 
 .school-logo {
-  width: 4.75rem;
-  height: 4.75rem;
+  width: 5.25rem;
+  height: 5.25rem;
   flex: 0 0 auto;
   object-fit: contain;
+  padding: 0.28rem;
+  background: var(--navy-950);
+  border-radius: 8px;
+  border: 1px solid rgba(239, 189, 69, 0.55);
 }
 
 .eyebrow,
@@ -101,7 +107,7 @@ a {
   color: var(--gold-600);
   font-size: 0.73rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -166,7 +172,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--gold-500);
-  box-shadow: 0 0 0 4px rgba(209, 163, 58, 0.16);
+  box-shadow: 0 0 0 4px rgba(239, 189, 69, 0.2);
 }
 
 .form-error {
@@ -187,9 +193,9 @@ textarea:focus {
 }
 
 .notice-text {
-  color: #7c5510;
-  background: #fff7e7;
-  border: 1px solid #f1dba8;
+  color: #6d4a0f;
+  background: #fff7e8;
+  border: 1px solid #efd59f;
 }
 
 .success-banner {
@@ -215,15 +221,15 @@ textarea:focus {
 }
 
 .primary-button {
-  color: #fff;
-  background: var(--navy-900);
-  box-shadow: 0 14px 28px rgba(13, 36, 61, 0.18);
+  color: var(--navy-950);
+  background: linear-gradient(135deg, #f7d772, var(--gold-500) 58%, #b87d20);
+  box-shadow: 0 14px 28px rgba(173, 118, 29, 0.28);
   padding: 0.78rem 1rem;
 }
 
 .primary-button:hover {
   transform: translateY(-1px);
-  background: var(--navy-800);
+  background: linear-gradient(135deg, #ffe18a, #efbd45 58%, #9f6918);
 }
 
 .primary-button:disabled {
@@ -233,8 +239,8 @@ textarea:focus {
 }
 
 .secondary-button {
-  color: var(--navy-900);
-  background: var(--gold-500);
+  color: #fff;
+  background: var(--navy-900);
   padding: 0.72rem 0.95rem;
 }
 
@@ -249,8 +255,8 @@ textarea:focus {
 .ghost-button:hover,
 .nav-button:hover,
 .secondary-button:hover {
-  border-color: rgba(184, 137, 34, 0.55);
-  box-shadow: 0 10px 24px rgba(13, 36, 61, 0.1);
+  border-color: rgba(239, 189, 69, 0.62);
+  box-shadow: 0 10px 24px rgba(11, 11, 13, 0.12);
 }
 
 .full-width {
@@ -277,12 +283,20 @@ textarea:focus {
   min-height: 23rem;
   padding: clamp(1.2rem, 4vw, 2rem);
   color: #fff;
-  border: 0;
+  border: 1px solid rgba(239, 189, 69, 0.24);
   background:
-    linear-gradient(135deg, rgba(13, 36, 61, 0.96), rgba(18, 52, 90, 0.9)),
-    url("institution_1_logo.png") center 2rem / 14rem auto no-repeat;
+    radial-gradient(circle at 82% 20%, rgba(239, 189, 69, 0.26), transparent 14rem),
+    linear-gradient(135deg, #0b0b0d 0%, #17130d 52%, #33240e 100%);
   overflow: hidden;
   position: relative;
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 1.1rem;
+  background: url("assets/lion-logo.png") right 0 top 0.15rem / 14.5rem auto no-repeat;
+  opacity: 0.32;
 }
 
 .glass-card::after {
@@ -291,7 +305,7 @@ textarea:focus {
   inset: auto 0 0 auto;
   width: 100%;
   height: 0.45rem;
-  background: linear-gradient(90deg, transparent, rgba(209, 163, 58, 0.82));
+  background: linear-gradient(90deg, transparent, rgba(239, 189, 69, 0.9));
 }
 
 .glass-card .panel-label,
@@ -326,9 +340,10 @@ textarea:focus {
 .metric-grid div {
   min-width: 0;
   padding: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(239, 189, 69, 0.24);
+  background: rgba(255, 253, 247, 0.09);
   border-radius: var(--radius);
+  backdrop-filter: blur(2px);
 }
 
 .metric-grid span {
@@ -353,7 +368,9 @@ textarea:focus {
 .sidebar {
   padding: 1.1rem;
   color: #fff;
-  background: var(--navy-950);
+  background:
+    radial-gradient(circle at 50% 0, rgba(239, 189, 69, 0.16), transparent 14rem),
+    var(--navy-950);
 }
 
 .sidebar-brand {
@@ -363,11 +380,13 @@ textarea:focus {
 }
 
 .sidebar-logo {
-  width: 3.1rem;
-  height: 3.1rem;
+  width: 3.2rem;
+  height: 3.2rem;
   object-fit: contain;
-  background: #fff;
-  border-radius: 50%;
+  padding: 0.25rem;
+  background: #0f1115;
+  border: 1px solid rgba(239, 189, 69, 0.62);
+  border-radius: 8px;
 }
 
 .sidebar-brand strong,
@@ -395,9 +414,9 @@ textarea:focus {
 
 .nav-button.is-active,
 .nav-button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--gold-500);
+  background: rgba(239, 189, 69, 0.1);
+  border-color: rgba(239, 189, 69, 0.2);
   box-shadow: none;
 }
 
@@ -436,7 +455,7 @@ textarea:focus {
 .stat-card {
   min-height: 8rem;
   padding: 1rem;
-  box-shadow: 0 14px 36px rgba(13, 36, 61, 0.08);
+  box-shadow: 0 14px 36px rgba(11, 11, 13, 0.08);
 }
 
 .stat-card span,
@@ -477,7 +496,7 @@ textarea:focus {
 
 .panel-card {
   padding: 1rem;
-  box-shadow: 0 12px 34px rgba(13, 36, 61, 0.07);
+  box-shadow: 0 12px 34px rgba(11, 11, 13, 0.07);
 }
 
 .panel-card > header,
@@ -540,8 +559,8 @@ textarea:focus {
 }
 
 .badge.gold {
-  color: #7c5510;
-  background: #f8ead0;
+  color: #6f4b12;
+  background: #f9eacb;
 }
 
 .action-row {
@@ -618,7 +637,7 @@ textarea:focus {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--teal-600), var(--gold-500));
+  background: linear-gradient(90deg, var(--gold-600), var(--gold-500));
 }
 
 .metric-row {
@@ -663,7 +682,7 @@ th {
   color: var(--navy-900);
   background: var(--blue-50);
   font-size: 0.74rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 

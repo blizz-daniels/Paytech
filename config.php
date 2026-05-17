@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-const APP_NAME = 'DepartmentPay Portal';
+const APP_NAME = 'Paytec';
+const COMPANY_NAME = 'Da4lions';
 const APP_ENV = 'local';
 
 define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');

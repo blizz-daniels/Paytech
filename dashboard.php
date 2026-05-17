@@ -191,6 +191,9 @@ if ($role === 'admin') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= h($roleName) ?> Dashboard - <?= h(APP_NAME) ?></title>
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/lion-logo-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/lion-logo-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/lion-logo-180.png">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -198,10 +201,10 @@ if ($role === 'admin') {
       <section class="dashboard-shell" aria-live="polite">
         <aside class="sidebar">
           <div class="sidebar-brand">
-            <img class="sidebar-logo" src="institution_1_logo.png" alt="School logo">
+            <img class="sidebar-logo" src="assets/lion-logo-192.png" alt="Da4lions logo">
             <div>
-              <strong>DepartmentPay</strong>
-              <span><?= h($roleName) ?></span>
+              <strong><?= h(APP_NAME) ?></strong>
+              <span><?= h(COMPANY_NAME) ?></span>
             </div>
           </div>
 

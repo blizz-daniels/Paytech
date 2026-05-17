@@ -1,6 +1,6 @@
-# DepartmentPay Portal
+# Paytec
 
-A PHP and MySQL school payment web app for departmental collections. The first page is a shared login screen, then users are routed into the correct dashboard for admin, lecturer, or student.
+A PHP and MySQL school payment web app by Da4lions for departmental collections. The first page is a shared login screen, then users are routed into the correct dashboard for admin, lecturer, or student.
 
 ## Demo Logins
 
