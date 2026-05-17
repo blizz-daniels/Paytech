@@ -43,10 +43,12 @@ DB_PASS = ''
 Set these in `config.php` or as environment variables:
 
 ```php
+APP_ENV = local
 PAYSTACK_SECRET_KEY = sk_test_xxxxx
 PAYSTACK_PUBLIC_KEY = pk_test_xxxxx
 PAYSTACK_CURRENCY = NGN
 APP_URL = http://127.0.0.1:8088
+PAYSTACK_CALLBACK_URL = http://127.0.0.1:8088/paystack_callback.php
 ```
 
 For local testing, `APP_URL` should match the local URL you open in the browser. For a hosted site, use the public HTTPS URL.

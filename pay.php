@@ -56,7 +56,7 @@ if ($existing) {
 
 $reference = paystack_reference();
 $amountKobo = (int) round(((float) $payment['amount']) * 100);
-$callbackUrl = current_app_url() . '/paystack_callback.php';
+$callbackUrl = PAYSTACK_CALLBACK_URL !== '' ? PAYSTACK_CALLBACK_URL : current_app_url() . '/paystack_callback.php';
 
 try {
     $response = paystack_initialize_transaction([
@@ -106,4 +106,3 @@ try {
     header('Location: dashboard.php?section=payments&message=' . rawurlencode('Paystack checkout could not start: ' . $exception->getMessage()));
     exit;
 }
-

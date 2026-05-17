@@ -6,7 +6,11 @@ require_once __DIR__ . '/../config.php';
 
 function paystack_is_configured(): bool
 {
-    return PAYSTACK_SECRET_KEY !== '';
+    if (PAYSTACK_SECRET_KEY === '') {
+        return false;
+    }
+
+    return !str_contains(PAYSTACK_SECRET_KEY, 'replace_with_your_key');
 }
 
 function paystack_request(string $method, string $path, array $payload = []): array
@@ -91,4 +95,3 @@ function paystack_verify_transaction(string $reference): array
 {
     return paystack_request('GET', '/transaction/verify/' . rawurlencode($reference));
 }
-
