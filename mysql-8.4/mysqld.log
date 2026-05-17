@@ -1,0 +1,4 @@
+2026-05-17T07:48:03.835168Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2026-05-17T07:48:04.509738Z 0 [Warning] [MY-010097] [Server] Insecure configuration for --secure-file-priv: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.
+2026-05-17T07:48:04.509839Z 0 [System] [MY-010116] [Server] C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqld (mysqld 8.4.3) starting as process 16196
+2026-05-17T07:48:04.643569Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
