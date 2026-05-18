@@ -40,18 +40,25 @@ DB_PASS = ''
 
 ## Paystack Setup
 
-Set these in `config.php` or as environment variables:
+Set these as environment variables (recommended) or in `config.php`:
 
 ```php
 APP_ENV = local
 PAYSTACK_SECRET_KEY = sk_test_xxxxx
 PAYSTACK_PUBLIC_KEY = pk_test_xxxxx
 PAYSTACK_CURRENCY = NGN
-APP_URL = http://127.0.0.1:8088
-PAYSTACK_CALLBACK_URL = http://127.0.0.1:8088/paystack_callback.php
+APP_URL = https://your-public-domain-or-ngrok/Paytech
+PAYSTACK_CALLBACK_URL = https://your-public-domain-or-ngrok/Paytech/paystack_callback.php
 ```
 
-For local testing, `APP_URL` should match the local URL you open in the browser. For a hosted site, use the public HTTPS URL.
+If your app runs in a subfolder (for example `/Paytech`), include that path in both URLs.  
+If `APP_URL` and `PAYSTACK_CALLBACK_URL` are left empty, the app auto-detects the base URL from the current request.
+
+Set Paystack webhook URL in your Paystack dashboard to:
+
+```text
+https://your-public-domain-or-ngrok/Paytech/paystack_webhook.php
+```
 
 If you already imported an older version of the database, run:
 
