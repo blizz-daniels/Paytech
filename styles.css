@@ -433,6 +433,10 @@ textarea:focus {
   margin-bottom: 1.25rem;
 }
 
+.workspace-header h2 {
+  color: #fff;
+}
+
 .muted-text {
   color: var(--muted);
   margin: 0.45rem 0 0;
