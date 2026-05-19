@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/helpers.php';
+require_once __DIR__ . '/lib/paystack.php';
 
 $user = require_login();
 $role = $user['role'];
@@ -19,6 +20,8 @@ $sections = [
         'create' => 'Create item',
         'items' => 'My items',
         'analysis' => 'Analysis',
+        'exports' => 'Exports',
+        'account' => 'My account',
     ],
     'admin' => [
         'overview' => 'Overview',
@@ -47,13 +50,19 @@ $paidPaymentIds = [];
 $departmentAnalysis = [];
 $methodAnalysis = [];
 $pendingAttempts = 0;
+$lecturerBanks = [];
+$lecturerBankLoadError = '';
+$lecturerPayoutReady = false;
 
 if ($role === 'student') {
     $welcomeTitle = 'Welcome, ' . $user['name'] . ' ' . $user['surname'];
     $welcomeMeta = $user['department'] . ' - ' . $user['level'] . ' level - ' . $user['matricnumber'];
 
     $payments = db_all(
-        "SELECT p.*, CONCAT(l.name, ' ', l.surname) AS lecturer_name
+        "SELECT p.*,
+                CONCAT(l.name, ' ', l.surname) AS lecturer_name,
+                l.paystack_subaccount_code,
+                l.paystack_subaccount_active
          FROM payments p
          INNER JOIN lecturers l ON l.id = p.lecturer_id
          WHERE p.status = 'active'
@@ -119,12 +128,45 @@ if ($role === 'lecturer') {
     $expected = array_sum(array_map(static fn (array $item): float => (float) $item['amount'] * (int) $item['eligible_count'], $payments));
     $collectionRate = percent_value($collected, $expected);
 
+    $lecturerPayoutReady = trim((string) ($user['paystack_subaccount_code'] ?? '')) !== '' && (int) ($user['paystack_subaccount_active'] ?? 0) === 1;
+
     $cards = [
         ['label' => 'Created items', 'value' => h((string) count($payments)), 'note' => 'Active departmental payment items'],
         ['label' => 'Collected', 'value' => money($collected), 'note' => $paidCount . ' successful student payment(s)'],
         ['label' => 'Department', 'value' => h($user['department']), 'note' => h($user['teachercode'])],
         ['label' => 'Collection rate', 'value' => h($collectionRate . '%'), 'note' => 'Against assigned payment value'],
+        ['label' => 'Payout status', 'value' => h($lecturerPayoutReady ? 'Ready' : 'Setup required'), 'note' => $lecturerPayoutReady ? 'Split settlement is linked to your bank account.' : 'Open My account to connect your settlement account.'],
     ];
+
+    if ($section === 'account' && paystack_is_configured()) {
+        try {
+            $banksResponse = paystack_list_banks(PAYSTACK_CURRENCY);
+            $banksData = $banksResponse['data'] ?? [];
+
+            if (is_array($banksData)) {
+                foreach ($banksData as $bank) {
+                    $code = trim((string) ($bank['code'] ?? ''));
+                    $name = trim((string) ($bank['name'] ?? ''));
+
+                    if ($code !== '' && $name !== '') {
+                        $lecturerBanks[] = [
+                            'code' => $code,
+                            'name' => $name,
+                        ];
+                    }
+                }
+            }
+
+            usort(
+                $lecturerBanks,
+                static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name'])
+            );
+        } catch (Throwable $exception) {
+            $lecturerBankLoadError = $exception->getMessage();
+        }
+    } elseif ($section === 'account') {
+        $lecturerBankLoadError = 'Paystack key is not configured yet.';
+    }
 }
 
 if ($role === 'admin') {
@@ -302,17 +344,23 @@ if ($role === 'admin') {
 
                   <?php foreach ($payments as $payment): ?>
                     <?php $paid = isset($paidPaymentIds[(int) $payment['id']]); ?>
+                    <?php $ownerReady = trim((string) ($payment['paystack_subaccount_code'] ?? '')) !== '' && (int) ($payment['paystack_subaccount_active'] ?? 0) === 1; ?>
                     <article class="list-row">
                       <div class="list-main">
                         <strong><?= h($payment['title']) ?></strong>
                         <span class="list-meta"><?= h($payment['description']) ?></span>
                         <span class="list-meta"><?= h($payment['department']) ?> - <?= h($payment['level']) ?> - Due <?= h(date_label($payment['due_date'])) ?></span>
+                        <?php if (!$ownerReady): ?>
+                          <span class="list-meta">Payment owner settlement account is not configured yet.</span>
+                        <?php endif; ?>
                       </div>
                       <div class="action-row">
                         <span class="amount-text"><?= money($payment['amount']) ?></span>
                         <span class="badge <?= $paid ? '' : 'gold' ?>"><?= $paid ? 'Paid' : 'Pending' ?></span>
                         <?php if ($paid): ?>
                           <a class="ghost-button" href="dashboard.php?section=receipts">View receipt</a>
+                        <?php elseif (!$ownerReady): ?>
+                          <button class="ghost-button" type="button" disabled>Unavailable</button>
                         <?php else: ?>
                           <form class="inline-pay-form" method="post" action="pay.php">
                             <?= csrf_field() ?>
@@ -351,6 +399,10 @@ if ($role === 'admin') {
                     <h3>Publish a new departmental payment</h3>
                   </div>
                 </header>
+
+                <?php if (!$lecturerPayoutReady): ?>
+                  <p class="notice-text">Complete My account setup first. New items can only be published after your settlement account is linked.</p>
+                <?php endif; ?>
 
                 <form class="form-grid" method="post" action="create_payment.php">
                   <?= csrf_field() ?>
@@ -392,7 +444,7 @@ if ($role === 'admin') {
                   </div>
 
                   <div class="wide action-row">
-                    <button class="primary-button" type="submit">Publish payment item</button>
+                    <button class="primary-button" type="submit" <?= $lecturerPayoutReady ? '' : 'disabled' ?>>Publish payment item</button>
                   </div>
                 </form>
               </section>
@@ -408,6 +460,7 @@ if ($role === 'admin') {
                   <?= profile_row('Name', $user['name'] . ' ' . $user['surname']) ?>
                   <?= profile_row('Teacher code', $user['teachercode']) ?>
                   <?= profile_row('Department', $user['department']) ?>
+                  <?= profile_row('Payout setup', $lecturerPayoutReady ? 'Ready' : 'Setup required') ?>
                 </div>
               </aside>
             <?php endif; ?>
@@ -456,7 +509,157 @@ if ($role === 'admin') {
               </section>
             <?php endif; ?>
 
-            <?php if ($role === 'lecturer' && $section !== 'create' && $section !== 'analysis'): ?>
+            <?php if ($role === 'lecturer' && $section === 'exports'): ?>
+              <section class="panel-card span-all">
+                <header>
+                  <div>
+                    <p class="eyebrow">Exports</p>
+                    <h3>Download paid students by payment item</h3>
+                  </div>
+                </header>
+
+                <?php if (!$payments): ?>
+                  <div class="empty-state">Create a payment item first before exporting paid student records.</div>
+                <?php else: ?>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Payment</th>
+                          <th>Level</th>
+                          <th>Amount</th>
+                          <th>Paid</th>
+                          <th>Collected</th>
+                          <th>Export</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php foreach ($payments as $payment): ?>
+                          <tr>
+                            <td><?= h($payment['title']) ?></td>
+                            <td><?= h($payment['level']) ?></td>
+                            <td><?= money($payment['amount']) ?></td>
+                            <td><?= h((string) $payment['paid_count']) ?></td>
+                            <td><?= money($payment['collected']) ?></td>
+                            <td>
+                              <?php if ((int) $payment['paid_count'] > 0): ?>
+                                <form method="post" action="export_paid_students.php">
+                                  <?= csrf_field() ?>
+                                  <input type="hidden" name="payment_id" value="<?= h((string) $payment['id']) ?>">
+                                  <button class="secondary-button" type="submit">Download CSV</button>
+                                </form>
+                              <?php else: ?>
+                                <span class="badge">No payments yet</span>
+                              <?php endif; ?>
+                            </td>
+                          </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                <?php endif; ?>
+              </section>
+            <?php endif; ?>
+
+            <?php if ($role === 'lecturer' && $section === 'account'): ?>
+              <section class="panel-card">
+                <header>
+                  <div>
+                    <p class="eyebrow">My account</p>
+                    <h3>Settlement account for split payouts</h3>
+                  </div>
+                </header>
+
+                <form class="form-grid" method="post" action="lecturer_account.php">
+                  <?= csrf_field() ?>
+
+                  <?php if ($lecturerBankLoadError): ?>
+                    <p class="notice-text wide"><?= h($lecturerBankLoadError) ?></p>
+                  <?php endif; ?>
+
+                  <?php if ($lecturerBanks): ?>
+                    <div class="field-group wide">
+                      <label for="bankCode">Bank</label>
+                      <select id="bankCode" name="bank_code" required>
+                        <option value="">Choose a bank</option>
+                        <?php foreach ($lecturerBanks as $bank): ?>
+                          <option value="<?= h($bank['code']) ?>" data-bank-name="<?= h($bank['name']) ?>" <?= (($user['bank_code'] ?? '') === $bank['code']) ? 'selected' : '' ?>>
+                            <?= h($bank['name']) ?> (<?= h($bank['code']) ?>)
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                      <input id="bankNameInput" type="hidden" name="bank_name" value="<?= h((string) ($user['bank_name'] ?? '')) ?>">
+                    </div>
+                  <?php else: ?>
+                    <div class="field-group">
+                      <label for="bankCodeManual">Bank code</label>
+                      <input id="bankCodeManual" name="bank_code" type="text" value="<?= h((string) ($user['bank_code'] ?? '')) ?>" placeholder="e.g. 058" required>
+                    </div>
+                    <div class="field-group">
+                      <label for="bankNameManual">Bank name (optional)</label>
+                      <input id="bankNameManual" name="bank_name" type="text" value="<?= h((string) ($user['bank_name'] ?? '')) ?>" placeholder="Guaranty Trust Bank">
+                    </div>
+                  <?php endif; ?>
+
+                  <div class="field-group">
+                    <label for="accountNumber">Account number</label>
+                    <input id="accountNumber" name="account_number" type="text" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" value="<?= h((string) ($user['account_number'] ?? '')) ?>" placeholder="10-digit NUBAN account number" required>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="splitModel">Split model</label>
+                    <input id="splitModel" type="text" value="<?= h((string) (100 - max(0.0, min(100.0, (float) PAYSTACK_PLATFORM_PERCENTAGE)))) ?>% lecturer / <?= h((string) max(0.0, min(100.0, (float) PAYSTACK_PLATFORM_PERCENTAGE))) ?>% platform" readonly>
+                  </div>
+
+                  <div class="wide action-row">
+                    <button class="primary-button" type="submit">Save settlement account</button>
+                  </div>
+                </form>
+              </section>
+
+              <aside class="panel-card">
+                <header>
+                  <div>
+                    <p class="eyebrow">Payout status</p>
+                    <h3>Paystack subaccount</h3>
+                  </div>
+                </header>
+                <div class="stack">
+                  <?= profile_row('Configured bank', (string) (($user['bank_name'] ?? '') !== '' ? $user['bank_name'] : '-')) ?>
+                  <?= profile_row('Account number', (string) (($user['account_number'] ?? '') !== '' ? $user['account_number'] : '-')) ?>
+                  <?= profile_row('Account name', (string) (($user['account_name'] ?? '') !== '' ? $user['account_name'] : '-')) ?>
+                  <?= profile_row('Subaccount code', (string) (($user['paystack_subaccount_code'] ?? '') !== '' ? $user['paystack_subaccount_code'] : '-')) ?>
+                  <?= profile_row('Active', ((int) ($user['paystack_subaccount_active'] ?? 0) === 1) ? 'Yes' : 'No') ?>
+                  <?= profile_row('Last sync', (string) (($user['paystack_synced_at'] ?? '') !== '' ? date_label($user['paystack_synced_at']) : 'Never')) ?>
+                  <?php if (($user['paystack_last_error'] ?? '') !== ''): ?>
+                    <p class="notice-text"><?= h((string) $user['paystack_last_error']) ?></p>
+                  <?php endif; ?>
+                </div>
+              </aside>
+
+              <?php if ($lecturerBanks): ?>
+                <script>
+                  (function () {
+                    const bankSelect = document.getElementById('bankCode');
+                    const bankNameInput = document.getElementById('bankNameInput');
+
+                    if (!bankSelect || !bankNameInput) {
+                      return;
+                    }
+
+                    const syncName = () => {
+                      const selected = bankSelect.options[bankSelect.selectedIndex];
+                      bankNameInput.value = selected ? (selected.getAttribute('data-bank-name') || '') : '';
+                    };
+
+                    syncName();
+                    bankSelect.addEventListener('change', syncName);
+                  })();
+                </script>
+              <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($role === 'lecturer' && $section !== 'create' && $section !== 'analysis' && $section !== 'account' && $section !== 'exports'): ?>
               <section class="panel-card">
                 <header>
                   <div>

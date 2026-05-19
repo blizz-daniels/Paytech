@@ -14,6 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 verify_csrf();
 
+$lecturer = db_one('SELECT paystack_subaccount_code, paystack_subaccount_active FROM lecturers WHERE id = ? LIMIT 1', [(int) $user['id']]);
+$subaccountCode = trim((string) ($lecturer['paystack_subaccount_code'] ?? ''));
+$subaccountActive = (int) ($lecturer['paystack_subaccount_active'] ?? 0) === 1;
+
+if ($subaccountCode === '' || !$subaccountActive) {
+    header('Location: dashboard.php?section=account&message=' . rawurlencode('Set up your settlement account in My account before publishing payment items.'));
+    exit;
+}
+
 $title = trim((string) ($_POST['title'] ?? ''));
 $description = trim((string) ($_POST['description'] ?? ''));
 $amount = (float) ($_POST['amount'] ?? 0);

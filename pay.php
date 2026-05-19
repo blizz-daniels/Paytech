@@ -29,18 +29,27 @@ if (!paystack_is_configured()) {
 }
 
 $payment = db_one(
-    "SELECT *
-     FROM payments
-     WHERE id = ?
-       AND status = 'active'
-       AND department = ?
-       AND (level = ? OR level = 'All levels')
+    "SELECT p.*, l.paystack_subaccount_code, l.paystack_subaccount_active
+     FROM payments p
+     INNER JOIN lecturers l ON l.id = p.lecturer_id
+     WHERE p.id = ?
+       AND p.status = 'active'
+       AND p.department = ?
+       AND (p.level = ? OR p.level = 'All levels')
      LIMIT 1",
     [$paymentId, $user['department'], $user['level']]
 );
 
 if (!$payment) {
     header('Location: dashboard.php?section=payments&message=' . rawurlencode('Payment item is not available for your profile.'));
+    exit;
+}
+
+$subaccountCode = trim((string) ($payment['paystack_subaccount_code'] ?? ''));
+$subaccountActive = (int) ($payment['paystack_subaccount_active'] ?? 0) === 1;
+
+if ($subaccountCode === '' || !$subaccountActive) {
+    header('Location: dashboard.php?section=payments&message=' . rawurlencode('This payment owner has not completed payout setup yet.'));
     exit;
 }
 
@@ -59,18 +68,24 @@ $amountKobo = (int) round(((float) $payment['amount']) * 100);
 $callbackUrl = PAYSTACK_CALLBACK_URL !== '' ? PAYSTACK_CALLBACK_URL : current_app_url() . '/paystack_callback.php';
 
 try {
+    $bearer = in_array(PAYSTACK_SPLIT_BEARER, ['account', 'subaccount'], true) ? PAYSTACK_SPLIT_BEARER : 'account';
+
     $response = paystack_initialize_transaction([
         'email' => $payerEmail,
         'amount' => (string) $amountKobo,
         'currency' => PAYSTACK_CURRENCY,
         'reference' => $reference,
         'callback_url' => $callbackUrl,
+        'subaccount' => $subaccountCode,
+        'bearer' => $bearer,
         'metadata' => [
             'student_id' => (int) $user['id'],
             'matricnumber' => $user['matricnumber'],
             'student_name' => $user['name'] . ' ' . $user['surname'],
             'payment_id' => (int) $payment['id'],
             'payment_title' => $payment['title'],
+            'lecturer_id' => (int) $payment['lecturer_id'],
+            'split_subaccount' => $subaccountCode,
             'department' => $user['department'],
             'level' => $user['level'],
         ],

@@ -41,9 +41,19 @@ CREATE TABLE lecturers (
   surname VARCHAR(80) NOT NULL,
   teachercode VARCHAR(80) NOT NULL UNIQUE,
   department VARCHAR(120) NOT NULL,
+  bank_code VARCHAR(20) DEFAULT NULL,
+  bank_name VARCHAR(160) DEFAULT NULL,
+  account_number VARCHAR(20) DEFAULT NULL,
+  account_name VARCHAR(160) DEFAULT NULL,
+  paystack_subaccount_code VARCHAR(80) DEFAULT NULL,
+  paystack_subaccount_id BIGINT UNSIGNED DEFAULT NULL,
+  paystack_subaccount_active TINYINT(1) NOT NULL DEFAULT 0,
+  paystack_last_error VARCHAR(255) DEFAULT NULL,
+  paystack_synced_at DATETIME DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_lecturer_login (surname, teachercode),
-  INDEX idx_lecturer_department (department)
+  INDEX idx_lecturer_department (department),
+  UNIQUE KEY uniq_lecturer_subaccount_code (paystack_subaccount_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE payments (

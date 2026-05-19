@@ -95,3 +95,33 @@ function paystack_verify_transaction(string $reference): array
 {
     return paystack_request('GET', '/transaction/verify/' . rawurlencode($reference));
 }
+
+function paystack_list_banks(string $currency = 'NGN'): array
+{
+    $query = http_build_query([
+        'currency' => strtoupper($currency),
+        'enabled_for_verification' => 'true',
+    ]);
+
+    return paystack_request('GET', '/bank?' . $query);
+}
+
+function paystack_resolve_account_number(string $accountNumber, string $bankCode): array
+{
+    $query = http_build_query([
+        'account_number' => $accountNumber,
+        'bank_code' => $bankCode,
+    ]);
+
+    return paystack_request('GET', '/bank/resolve?' . $query);
+}
+
+function paystack_create_subaccount(array $data): array
+{
+    return paystack_request('POST', '/subaccount', $data);
+}
+
+function paystack_update_subaccount(string $idOrCode, array $data): array
+{
+    return paystack_request('PUT', '/subaccount/' . rawurlencode($idOrCode), $data);
+}
