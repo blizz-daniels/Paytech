@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+mysql-8.4/
+storage/sessions/
+storage/sessions/*
+data/backup_*.sql
+php-server.*.log

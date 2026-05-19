@@ -6,6 +6,8 @@ require_once __DIR__ . '/database.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $sessionPath = dirname(__DIR__) . '/storage/sessions';
+    $httpsEnabled = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    $secureCookie = SESSION_SECURE_COOKIE || $httpsEnabled;
 
     if (!is_dir($sessionPath)) {
         mkdir($sessionPath, 0775, true);
@@ -14,6 +16,20 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     if (is_dir($sessionPath) && is_writable($sessionPath)) {
         session_save_path($sessionPath);
     }
+
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.cookie_httponly', '1');
+    if ($secureCookie) {
+        ini_set('session.cookie_secure', '1');
+    }
+
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $secureCookie,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 
     session_start();
 }

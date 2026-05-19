@@ -150,13 +150,15 @@ try {
     header('Location: dashboard.php?section=account&message=' . rawurlencode('Settlement account saved and linked to Paystack split payouts.'));
     exit;
 } catch (Throwable $exception) {
+    error_log('Lecturer payout setup failed for lecturer ID ' . (string) $user['id'] . ': ' . $exception->getMessage());
+
     try {
         $errorSetParts = [];
         $errorParams = [];
 
         if (isset($columns['paystack_last_error'])) {
             $errorSetParts[] = 'paystack_last_error = ?';
-            $errorParams[] = substr($exception->getMessage(), 0, 255);
+            $errorParams[] = 'Account setup could not be completed with the provided details.';
         }
 
         if (isset($columns['paystack_synced_at'])) {
@@ -176,6 +178,6 @@ try {
         // Ignore logging failures to avoid masking the original error.
     }
 
-    header('Location: dashboard.php?section=account&message=' . rawurlencode('Could not save account: ' . $exception->getMessage()));
+    header('Location: dashboard.php?section=account&message=' . rawurlencode('Could not save account details right now. Please confirm details and try again.'));
     exit;
 }

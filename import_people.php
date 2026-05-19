@@ -117,7 +117,7 @@ try {
 } catch (Throwable $exception) {
     fclose($handle);
     db()->rollBack();
-    header('Location: dashboard.php?section=import&message=' . rawurlencode('CSV import failed: ' . $exception->getMessage()));
+    error_log('CSV import failed: ' . $exception->getMessage());
+    header('Location: dashboard.php?section=import&message=' . rawurlencode('CSV import failed. Please verify the file format and try again.'));
     exit;
 }
-

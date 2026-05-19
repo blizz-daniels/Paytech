@@ -160,6 +160,6 @@ try {
         db()->rollBack();
     }
 
-    webhook_response(500, ['status' => 'error', 'message' => 'Webhook processing failed: ' . $exception->getMessage()]);
+    error_log('Paystack webhook processing failed for reference ' . $reference . ': ' . $exception->getMessage());
+    webhook_response(500, ['status' => 'error', 'message' => 'Webhook processing failed']);
 }
-

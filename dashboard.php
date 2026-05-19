@@ -162,7 +162,8 @@ if ($role === 'lecturer') {
                 static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name'])
             );
         } catch (Throwable $exception) {
-            $lecturerBankLoadError = $exception->getMessage();
+            error_log('Could not load Paystack banks: ' . $exception->getMessage());
+            $lecturerBankLoadError = 'Could not load banks right now. Refresh and try again.';
         }
     } elseif ($section === 'account') {
         $lecturerBankLoadError = 'Paystack key is not configured yet.';

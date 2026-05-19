@@ -113,7 +113,7 @@ try {
         db()->rollBack();
     }
 
-    header('Location: dashboard.php?section=payments&message=' . rawurlencode('Paystack verification failed: ' . $exception->getMessage()));
+    error_log('Paystack callback verification failed for reference ' . $reference . ': ' . $exception->getMessage());
+    header('Location: dashboard.php?section=payments&message=' . rawurlencode('Paystack verification failed. Please contact support if the charge succeeded.'));
     exit;
 }
-

@@ -91,11 +91,13 @@ try {
             <button class="primary-button full-width" type="submit">Sign in</button>
           </form>
 
-          <div class="demo-strip" aria-label="Demo access examples">
-            <span>Student: Okafor / DPT/CSC/24/001</span>
-            <span>Lecturer: Mensah / TCH-CS-104</span>
-            <span>Admin: admin / ADMIN-001</span>
-          </div>
+          <?php if (APP_ENV === 'local'): ?>
+            <div class="demo-strip" aria-label="Demo access examples">
+              <span>Student: Okafor / DPT/CSC/24/001</span>
+              <span>Lecturer: Mensah / TCH-CS-104</span>
+              <span>Admin: admin / ADMIN-001</span>
+            </div>
+          <?php endif; ?>
         </section>
 
         <aside class="status-panel" aria-label="Payment summary">

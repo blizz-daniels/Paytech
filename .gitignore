@@ -1,3 +1,5 @@
 storage/sessions/sess_*
 php-server.*.log
-
+.env
+.env.*
+!.env.example

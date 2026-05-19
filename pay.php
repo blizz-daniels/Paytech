@@ -118,6 +118,7 @@ try {
     header('Location: ' . $authorizationUrl);
     exit;
 } catch (Throwable $exception) {
-    header('Location: dashboard.php?section=payments&message=' . rawurlencode('Paystack checkout could not start: ' . $exception->getMessage()));
+    error_log('Paystack checkout init failed: ' . $exception->getMessage());
+    header('Location: dashboard.php?section=payments&message=' . rawurlencode('Paystack checkout could not start. Please try again.'));
     exit;
 }

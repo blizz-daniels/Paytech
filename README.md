@@ -2,7 +2,7 @@
 
 A PHP and MySQL school payment web app by Da4lions for departmental collections. The first page is a shared login screen, then users are routed into the correct dashboard for admin, lecturer, or student.
 
-## Demo Logins
+## Demo Logins (Local Only)
 
 - Student: `Okafor` / `DPT/CSC/24/001`
 - Lecturer: `Mensah` / `TCH-CS-104`
@@ -27,11 +27,11 @@ A PHP and MySQL school payment web app by Da4lions for departmental collections.
 ## Setup
 
 1. Create/import the database using `data/schema.sql`.
-2. Update database settings in `config.php` if needed.
+2. Set environment variables (copy `.env.example` and fill real values).
 3. Put the folder inside your PHP server root, for example `htdocs/Paytech` in XAMPP.
 4. Visit `http://localhost/Paytech/index.php`.
 
-Default MySQL settings in `config.php` are:
+If env vars are not set locally, defaults are:
 
 ```php
 DB_HOST = 127.0.0.1
@@ -43,10 +43,11 @@ DB_PASS = ''
 
 ## Paystack Setup
 
-Set these as environment variables (recommended) or in `config.php`:
+Set these as environment variables:
 
 ```php
-APP_ENV = local
+APP_ENV = production
+APP_DEBUG = false
 PAYSTACK_SECRET_KEY = sk_test_xxxxx
 PAYSTACK_PUBLIC_KEY = pk_test_xxxxx
 PAYSTACK_CURRENCY = NGN
@@ -56,7 +57,7 @@ APP_URL = https://your-public-domain-or-ngrok/Paytech
 PAYSTACK_CALLBACK_URL = https://your-public-domain-or-ngrok/Paytech/paystack_callback.php
 ```
 
-If your app runs in a subfolder (for example `/Paytech`), include that path in both URLs.  
+If your app runs in a subfolder (for example `/Paytech`), include that path in both URLs.
 If `APP_URL` and `PAYSTACK_CALLBACK_URL` are left empty, the app auto-detects the base URL from the current request.
 
 Set Paystack webhook URL in your Paystack dashboard to:
@@ -71,6 +72,29 @@ If you already imported an older version of the database, run:
 SOURCE C:/Users/da4li/Documents/Paytech/data/migration_paystack_import_analysis.sql
 SOURCE C:/Users/da4li/Documents/Paytech/data/migration_paystack_subaccounts.sql
 ```
+
+## Production Launch Checklist
+
+1. Rotate Paystack keys and use `sk_live_...` / `pk_live_...` in env vars only.
+2. Set `APP_ENV=production`, `APP_DEBUG=false`, and `SESSION_SECURE_COOKIE=true`.
+3. Remove demo records and replace seeded admin/student/lecturer credentials.
+4. Use a non-root database user with a strong password.
+5. Enable HTTPS on your domain before opening login/payment pages.
+6. Set webhook URL to `https://your-domain/paystack_webhook.php`.
+7. Confirm `data/` and `storage/` are not publicly accessible.
+8. Run a real payment test end-to-end (checkout, callback, webhook, receipt).
+9. Configure daily database backups.
+
+## Deploy on Railway (Recommended)
+
+1. Push this repository to GitHub.
+2. In Railway, create a new project from the repo (Dockerfile is included).
+3. Add a MySQL service in the same Railway project.
+4. Set app environment variables from `.env.example` values.
+5. Point `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASS` to Railway MySQL credentials.
+6. Import `data/schema.sql` into the Railway MySQL database.
+7. Add your custom domain and enable HTTPS.
+8. Set Paystack callback and webhook URLs to your live domain.
 
 ## Files
 
